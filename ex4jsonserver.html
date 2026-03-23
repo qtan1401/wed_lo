@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #ccc;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .total-info {
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Product List</h2>
+    <table id="product-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Description</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Product rows will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <h2>Shopping Cart</h2>
+    <table id="cart-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Total Price</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Cart rows will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <div class="total-info">
+        <p style="color: blue;">Total Number of Products: <span id="total-quantity">0</span></p>
+        <p style="color:rgb(175, 5, 5)">Total Price Overall: $<span id="total-price">0.00</span></p>
+    </div>
+
+    <script>
+        const API_PRODUCTS = "http://localhost:3000/products";
+        const API_CART = "http://localhost:3000/cart";
+
+        // ===== LOAD PRODUCTS =====
+        function renderProducts() {
+            fetch(API_PRODUCTS)
+                .then(res => res.json())
+                .then(products => {
+                    let html = "";
+                    products.forEach(p => {
+                        html += `
+                    <tr>
+                        <td>${p.id}</td>
+                        <td>${p.name}</td>
+                        <td>${p.price.toFixed(2)}</td>
+                        <td>${p.description}</td>
+                        <td><button onclick="addToCart(${p.id})">Add</button></td>
+                    </tr>
+                    `;
+                    });
+                    document.querySelector("#product-table tbody").innerHTML = html;
+                });
+        }
+
+        // ===== ADD TO CART =====
+        function addToCart(productId) {
+            // 1. Lấy thông tin sản phẩm từ danh sách sản phẩm
+            fetch(API_PRODUCTS + "/" + productId)
+                .then(res => res.json())
+                .then(product => {
+
+                    // 2. Tìm xem sản phẩm này đã có trong giỏ hàng chưa (tìm theo productId)
+                    fetch(API_CART + "?productId=" + productId)
+                        .then(res => res.json())
+                        .then(data => {
+
+                            if (data.length > 0) {
+                                // Đã có -> Tăng số lượng (PATCH)
+                                let item = data[0];
+                                fetch(API_CART + "/" + item.id, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        quantity: Number(item.quantity) + 1
+                                    })
+                                })
+                                    .then(() => renderCart());
+
+                            } else {
+                                // Chưa có -> Thêm mới (POST)
+                                fetch(API_CART, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        productId: product.id, // Lưu productId để sau này tìm kiếm
+                                        name: product.name,
+                                        price: product.price,
+                                        quantity: 1
+                                    })
+                                })
+                                    .then(() => renderCart());
+                            }
+                        });
+                });
+        }
+
+        // ===== LOAD CART =====
+        function renderCart() {
+            fetch(API_CART)
+                .then(res => res.json())
+                .then(cart => {
+
+                    let html = "";
+                    let totalQty = 0;
+                    let totalPrice = 0;
+
+                    cart.forEach(item => {
+                        let price = parseFloat(item.price);
+                        let qty = parseInt(item.quantity);
+                        let itemTotal = price * qty;
+
+                        totalQty += qty;
+                        totalPrice += itemTotal;
+
+                        html += `
+                    <tr>
+                        <td>${item.productId || item.id}</td>
+                        <td>${item.name}</td>
+                        <td>${price.toFixed(2)}</td>
+                        <td>
+                            <input type="number" value="${qty}"
+                            onchange="updateQuantity('${item.id}', this.value)">
+                        </td>
+                        <td>${itemTotal.toFixed(2)}</td>
+                        <td>
+                            <button onclick="removeFromCart('${item.id}')">Remove</button>
+                        </td>
+                    </tr>
+                    `;
+                    });
+
+                    document.querySelector("#cart-table tbody").innerHTML = html;
+                    document.getElementById("total-quantity").innerText = totalQty;
+                    document.getElementById("total-price").innerText = totalPrice.toFixed(2);
+                });
+        }
+
+        // ===== UPDATE =====
+        function updateQuantity(id, quantity) {
+            quantity = parseInt(quantity);
+
+            if (quantity <= 0) {
+                removeFromCart(id);
+                return;
+            }
+
+            fetch(API_CART + "/" + id, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    quantity: quantity
+                })
+            })
+                .then(() => renderCart());
+        }
+
+        // ===== DELETE =====
+        function removeFromCart(id) {
+            fetch(API_CART + "/" + id, {
+                method: "DELETE"
+            })
+                .then(() => renderCart());
+        }
+
+        // INIT
+        renderProducts();
+        renderCart();
+    </script>
+
+</body>
+
+</html>

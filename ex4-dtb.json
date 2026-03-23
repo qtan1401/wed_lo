@@ -1,0 +1,40 @@
+{
+  "products": [
+    {
+      "id": "1",
+      "name": "Product 1",
+      "price": 10,
+      "description": "Description 1"
+    },
+    {
+      "id": "2",
+      "name": "Product 2",
+      "price": 20,
+      "description": "Description 2"
+    }
+  ],
+  "cart": [
+    {
+      "productId": "1",
+      "name": "Product 1",
+      "price": 10,
+      "quantity": 1,
+      "id": "D_6PxjiwibQ"
+    },
+    {
+      "productId": "1",
+      "name": "Product 1",
+      "price": 10,
+      "quantity": 1,
+      "id": "enffhEwAeZA"
+    },
+    {
+      "productId": "2",
+      "name": "Product 2",
+      "price": 20,
+      "quantity": 2,
+      "id": "3pU1iL-CZww"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}
